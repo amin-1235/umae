@@ -1,0 +1,66 @@
+# UMAE Configuration
+
+app_name: UMAE
+version: "0.1.0"
+debug: false
+
+database:
+  url: sqlite:///data/umae.db
+  echo: false
+
+binance:
+  rate_limit: 10
+
+yahoo:
+  rate_limit: 5
+
+telegram:
+  enabled: false
+  rate_limit: 10
+  max_message_length: 4096
+
+features:
+  # Trend
+  ema_fast_period: 9
+  ema_slow_period: 21
+  ema_trend_period: 50
+  sma_long_period: 200
+  
+  # Momentum
+  rsi_period: 14
+  rsi_overbought: 70.0
+  rsi_oversold: 30.0
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  roc_period: 10
+  
+  # Volume
+  volume_period: 20
+  volume_expansion_period: 5
+  
+  # Volatility
+  atr_period: 14
+  volatility_period: 100
+  
+  # Price Structure
+  structure_lookback: 20
+  sr_lookback: 50
+
+backtest:
+  initial_capital: 10000.0
+  maker_fee: 0.001
+  taker_fee: 0.001
+  base_spread: 0.001
+  base_slippage: 0.0005
+  train_days: 365
+  test_days: 180
+  step_days: 90
+  position_percentage: 0.02
+  max_position: 0.10
+  stop_loss_percent: 0.02
+  take_profit_percent: 0.04
+
+logging:
+  level: INFO
+  format: json
