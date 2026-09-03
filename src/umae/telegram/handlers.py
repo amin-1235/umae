@@ -8,7 +8,7 @@ and the formatter for message construction.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from umae.telegram.models import ProviderStatus, SystemStatus
@@ -143,7 +143,7 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 # Quick probe: try to get exchange info / metadata
                 from umae.domain.models import Timeframe
 
-                now = datetime.utcnow()
+                now = datetime.now(UTC)
                 start = (now - timedelta(hours=1)).isoformat()
                 end = now.isoformat()
                 cs = await adapter.fetch_candles("BTCUSDT", Timeframe.H1, start, end)

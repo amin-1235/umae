@@ -20,6 +20,32 @@ def setup_logging() -> None:
     )
 
 
+async def _run_with_cleanup(
+    bot: "UMAEBot",
+    adapters: list,
+    database: "Database",
+) -> None:
+    """Run bot with deterministic cleanup of all resources."""
+    logger = logging.getLogger(__name__)
+    try:
+        await bot.run()
+    finally:
+        # Close all adapters — suppress errors to ensure all are attempted
+        for adapter in adapters:
+            try:
+                if hasattr(adapter, "close"):
+                    await adapter.close()
+                    logger.info("Closed adapter: %s", type(adapter).__name__)
+            except Exception as e:
+                logger.warning("Error closing adapter %s: %s", type(adapter).__name__, e)
+        # Close database
+        try:
+            database.close()
+            logger.info("Database connections closed")
+        except Exception as e:
+            logger.warning("Error closing database: %s", e)
+
+
 def main() -> None:
     """Main entry point."""
     setup_logging()
@@ -96,9 +122,9 @@ def main() -> None:
     logger.info("Starting UMAE Telegram Bot...")
     logger.info("Bot token: ***")
 
-    # Run bot
+    # Run bot with deterministic adapter cleanup
     try:
-        asyncio.run(bot.run())
+        asyncio.run(_run_with_cleanup(bot, [binance_adapter, yahoo_adapter], database))
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
     except Exception:

@@ -41,22 +41,32 @@ def main_menu() -> InlineKeyboardMarkup:
 
 # ── Category Menu ───────────────────────────────────────────────
 
-_CRYPTO_ASSETS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"]
-_STOCK_ASSETS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN"]
-_FOREX_ASSETS = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CHF"]
-_INDEX_ASSETS = ["^GSPC", "^NDX", "^DJI", "^RUT", "^VIX"]
+# ── Default assets (fallback if no discovery available) ─────────
+_DEFAULT_CRYPTO = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT"]
+_DEFAULT_STOCKS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN"]
+_DEFAULT_FOREX = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CHF"]
+_DEFAULT_INDICES = ["^GSPC", "^NDX", "^DJI", "^RUT", "^VIX"]
 
-_ASSET_MAP = {
-    "crypto": _CRYPTO_ASSETS,
-    "stocks": _STOCK_ASSETS,
-    "forex": _FOREX_ASSETS,
-    "indices": _INDEX_ASSETS,
+_DEFAULT_ASSET_MAP = {
+    "crypto": _DEFAULT_CRYPTO,
+    "stocks": _DEFAULT_STOCKS,
+    "forex": _DEFAULT_FOREX,
+    "indices": _DEFAULT_INDICES,
 }
 
 
-def category_menu(category: str) -> InlineKeyboardMarkup:
-    """Build asset selection menu for a category."""
-    assets = _ASSET_MAP.get(category, [])
+def category_menu(
+    category: str,
+    assets: list[str] | None = None,
+) -> InlineKeyboardMarkup:
+    """Build asset selection menu for a category.
+
+    Args:
+        category: Category name (crypto, stocks, forex, indices).
+        assets: List of asset symbols. Falls back to defaults if None.
+    """
+    if assets is None:
+        assets = _DEFAULT_ASSET_MAP.get(category, [])
     buttons: list[list[InlineKeyboardButton]] = []
 
     for asset in assets:
@@ -149,11 +159,11 @@ def timeframe_menu(category: str, asset: str) -> InlineKeyboardMarkup:
 def analysis_actions(category: str, asset: str, tf: str | None = None) -> InlineKeyboardMarkup:
     """Build action buttons shown after an analysis result."""
     if tf:
-        refresh_cb = f"tf:{category}:{asset}:{tf}"
+        refresh_cb = f"refresh:{category}:{asset}:{tf}"
         multi_cb = f"multi:{category}:{asset}"
     else:
-        refresh_cb = f"multi:{category}:{asset}"
-        multi_cb = refresh_cb
+        refresh_cb = f"refresh:{category}:{asset}"
+        multi_cb = f"multi:{category}:{asset}"
 
     buttons: list[list[InlineKeyboardButton]] = [
         [

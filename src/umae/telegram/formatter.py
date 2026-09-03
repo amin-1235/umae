@@ -223,10 +223,15 @@ class TelegramFormatter:
         for i, item in enumerate(result.items, 1):
             emoji = self._signal_emoji(item.signal)
             price_str = f"${item.price:,.2f}" if item.price is not None else "N/A"
-            lines.append(
-                f"{i}. {item.symbol} ({item.exchange}) - "
-                f"{emoji} {item.signal.upper()} {item.score:+.2f} @ {price_str}"
-            )
+            if item.signal == "unavailable":
+                lines.append(
+                    f"{i}. {item.symbol} ({item.exchange or 'N/A'}) - \u26a0\ufe0f DATA UNAVAILABLE"
+                )
+            else:
+                lines.append(
+                    f"{i}. {item.symbol} ({item.exchange}) - "
+                    f"{emoji} {item.signal.upper()} {item.score:+.2f} @ {price_str}"
+                )
 
         lines.append("")
         lines.append("Use /add <symbol> to add")
@@ -360,7 +365,9 @@ class TelegramFormatter:
         lines.append("═" * 31)
         lines.append("")
         lines.append(f"Asset: {result.symbol}")
-        lines.append(f"Target TF: {target_tf}")
+        # Use result's target_timeframe if available, otherwise the parameter
+        display_tf = result.target_timeframe or target_tf
+        lines.append(f"Target TF: {display_tf}")
         lines.append("Mode: SINGLE-TF")
         lines.append(f"Exchange: {result.exchange}")
         lines.append("")
@@ -531,6 +538,7 @@ class TelegramFormatter:
             "down": "\U0001f534",
             "neutral": "\U0001f7e1",
             "no_signal": "\u26aa",
+            "unavailable": "\u26a0\ufe0f",
         }.get(signal, "\u26aa")
 
     @staticmethod

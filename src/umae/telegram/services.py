@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from umae.domain.enums import AssetType, MarketRegime, SignalType
+from umae.domain.enums import AssetType, MarketRegime, SignalType, Timeframe
 from umae.telegram.models import (
     AnalysisResult,
     DataQuality,
@@ -28,6 +28,13 @@ if TYPE_CHECKING:
     from umae.storage.repositories import WatchlistRepository
 
 logger = logging.getLogger(__name__)
+
+# ── Timeframe string → enum mapping ────────────────────────────
+TIMEFRAME_MAP: dict[str, Timeframe] = {tf.value: tf for tf in Timeframe}
+
+# ── Signal state for unavailable data ───────────────────────────
+DATA_UNAVAILABLE_SIGNAL = "unavailable"
+DATA_UNAVAILABLE_SCORE = 0.0
 
 
 def _convert_signal(signal: SignalType) -> str:
@@ -77,16 +84,21 @@ class AnalysisService:
     def __init__(self, core_service: CoreAnalysisService) -> None:
         self._core = core_service
 
-    async def analyze(self, symbol: str) -> AnalysisResult:
+    async def analyze(
+        self,
+        symbol: str,
+        target_timeframe: Timeframe | None = None,
+    ) -> AnalysisResult:
         """Run analysis and return Telegram-formatted result.
 
         Args:
             symbol: Asset symbol to analyze.
+            target_timeframe: If set, the single-TF target for analysis.
 
         Returns:
             AnalysisResult formatted for Telegram display.
         """
-        result = await self._core.analyze(symbol)
+        result = await self._core.analyze(symbol, target_timeframe=target_timeframe)
         return self._convert_result(result)
 
     def _convert_result(self, core_result) -> AnalysisResult:
@@ -329,14 +341,14 @@ class WatchlistService:
                         last_analyzed=result.timestamp,
                     )
                 )
-            except Exception:
-                logger.warning("Failed to analyze %s for watchlist", symbol)
+            except Exception as e:
+                logger.warning("Failed to analyze %s for watchlist: %s", symbol, e)
                 items.append(
                     WatchlistItem(
                         symbol=symbol,
                         exchange="",
-                        signal="neutral",
-                        score=0.0,
+                        signal=DATA_UNAVAILABLE_SIGNAL,
+                        score=DATA_UNAVAILABLE_SCORE,
                     )
                 )
 
