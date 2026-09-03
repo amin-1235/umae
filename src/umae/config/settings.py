@@ -9,6 +9,15 @@ import yaml
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# ── Category → Adapter routing ─────────────────────────────────
+# Maps Telegram asset category names to the adapter that supports them.
+CATEGORY_PROVIDERS: dict[str, str] = {
+    "crypto": "binance",
+    "stocks": "yahoo",
+    "forex": "yahoo",
+    "indices": "yahoo",
+}
+
 
 class DatabaseConfig(BaseSettings):
     """Database configuration."""

@@ -76,6 +76,11 @@ class BinanceAdapter:
         """Get adapter name."""
         return "binance"
 
+    @property
+    def supported_asset_types(self) -> frozenset[AssetType]:
+        """Binance supports only cryptocurrency assets."""
+        return frozenset({AssetType.CRYPTO})
+
     async def close(self) -> None:
         """Close the adapter."""
         await self._http.close()
@@ -141,7 +146,7 @@ class BinanceAdapter:
             Validated Binance symbol
 
         Raises:
-            ProviderError: If symbol cannot be resolved
+            ProviderError: If symbol cannot be resolved or metadata unavailable
         """
         from umae.interfaces.base_adapter import ProviderError
 
@@ -163,16 +168,21 @@ class BinanceAdapter:
                     return test
 
             raise ProviderError(
-                category="SYMBOL_NOT_FOUND",
+                category="UNSUPPORTED_ASSET",
                 message=f"Symbol '{user_input}' not found on Binance",
                 provider="binance",
             )
         except ProviderError:
             raise
         except Exception:
-            # If we can't reach exchange info, return best guess
+            # If we can't reach exchange info, we cannot confirm the symbol exists.
+            # Do NOT return an unvalidated guess.
             logger.warning("Cannot validate symbol %s against exchange info", user_input)
-            return candidate
+            raise ProviderError(
+                category="DATA_PROVIDER_UNAVAILABLE",
+                message=f"Cannot validate symbol '{user_input}': exchange metadata unavailable",
+                provider="binance",
+            ) from None
 
     async def fetch_candles(
         self,

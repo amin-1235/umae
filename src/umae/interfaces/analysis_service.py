@@ -138,6 +138,29 @@ class AnalysisService:
         """
         self._adapters[name] = adapter
 
+    def _select_adapter(self, category: str | None = None) -> str:
+        """Select the best adapter for a given asset category.
+
+        Uses the CATEGORY_PROVIDERS routing map from settings.
+        Falls back to self._default_adapter if no mapping exists.
+
+        Args:
+            category: Asset category (e.g., "crypto", "forex", "stocks").
+
+        Returns:
+            Adapter name to use.
+
+        Raises:
+            KeyError: If no adapter is registered for the selected name.
+        """
+        if category:
+            from umae.config.settings import CATEGORY_PROVIDERS
+
+            adapter_name = CATEGORY_PROVIDERS.get(category)
+            if adapter_name and adapter_name in self._adapters:
+                return adapter_name
+        return self._default_adapter
+
     def _get_adapter(self, adapter_name: str | None = None) -> DataAdapter:
         """Resolve adapter by name or default."""
         name = adapter_name or self._default_adapter
@@ -153,6 +176,7 @@ class AnalysisService:
         timeframes: list[Timeframe] | None = None,
         lookback_days: int = 90,
         target_timeframe: Timeframe | None = None,
+        category: str | None = None,
     ) -> AnalysisResult:
         """Run full analysis pipeline on a symbol.
 
@@ -162,6 +186,7 @@ class AnalysisService:
             timeframes: Override timeframes (uses instance defaults if None).
             lookback_days: Days of historical data to fetch.
             target_timeframe: If set, this is the single-TF target.
+            category: Asset category for provider routing (e.g., "crypto", "forex").
 
         Returns:
             AnalysisResult with signal, regime, and timeframe breakdown.
@@ -173,7 +198,7 @@ class AnalysisService:
         start_ms = _time.monotonic()
         tfs = timeframes or self._timeframes
         settings = get_settings()
-        provider_name = adapter_name or self._default_adapter
+        provider_name = adapter_name or self._select_adapter(category)
         provider_symbol = symbol
 
         # Try to resolve adapter

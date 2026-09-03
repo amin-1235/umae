@@ -262,9 +262,22 @@ class BaseHTTPAdapter:
                 provider=provider,
             )
         if isinstance(exc, aiohttp.ClientResponseError):
+            status = exc.status
+            if status == 400:
+                return ProviderError(
+                    category="UNSUPPORTED_ASSET",
+                    message=f"{provider} rejected request (HTTP {status}): {exc.message}",
+                    provider=provider,
+                )
+            if status == 429:
+                return ProviderError(
+                    category="RATE_LIMITED",
+                    message=f"{provider} rate limited (HTTP {status}): {exc.message}",
+                    provider=provider,
+                )
             return ProviderError(
                 category="DATA_PROVIDER_HTTP_ERROR",
-                message=f"{provider} returned HTTP {exc.status}: {exc.message}",
+                message=f"{provider} returned HTTP {status}: {exc.message}",
                 provider=provider,
             )
         if isinstance(exc, asyncio.TimeoutError):
@@ -288,9 +301,23 @@ class BaseHTTPAdapter:
     def _should_retry(self, exc: Exception) -> bool:
         """Determine if a request should be retried.
 
-        TLS errors and connection errors should NOT be retried.
-        Only transient errors like timeouts and 5xx should be retried.
+        Non-retryable:
+          - TLS certificate errors
+          - Connection errors (cannot reach server)
+          - SSL errors
+          - HTTP 400 Bad Request (unsupported symbol / invalid params)
+          - HTTP 401 Unauthorized
+          - HTTP 403 Forbidden
+          - HTTP 404 Not Found
+
+        Retryable:
+          - HTTP 408 Request Timeout
+          - HTTP 429 Too Many Requests
+          - HTTP 5xx Server Errors
+          - asyncio.TimeoutError (transport-level timeout)
+          - Other transient client errors
         """
+        # Never retry TLS or connection-level failures
         if isinstance(
             exc,
             (
@@ -300,6 +327,17 @@ class BaseHTTPAdapter:
             ),
         ):
             return False
+
+        # Check HTTP status codes for ClientResponseError
+        if isinstance(exc, aiohttp.ClientResponseError):
+            status = exc.status
+            # Permanent client errors — do not retry
+            if status in (400, 401, 403, 404):
+                return False
+            # Retryable: 408, 429, 5xx; others — do not retry
+            return status == 408 or status == 429 or status >= 500
+
+        # Timeouts and other transient errors — retry
         return isinstance(exc, (aiohttp.ClientError, asyncio.TimeoutError))
 
     async def _request(
@@ -333,8 +371,22 @@ class BaseHTTPAdapter:
         for attempt in range(self.max_retries):
             try:
                 async with session.request(method, url, params=params, headers=headers) as resp:
+                    # Check status before raising — enables Retry-After extraction
+                    if resp.status == 429:
+                        retry_after = resp.headers.get("Retry-After")
+                        wait_time = min(float(retry_after) if retry_after else 2**attempt, 30)
+                        logger.warning(
+                            "Rate limited (attempt %d/%d). Retrying in %.1fs",
+                            attempt + 1,
+                            self.max_retries,
+                            wait_time,
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
                     resp.raise_for_status()
                     return await resp.json()
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:
                 last_exc = exc
                 if not self._should_retry(exc):

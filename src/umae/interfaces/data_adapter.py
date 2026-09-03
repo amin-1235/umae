@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from umae.domain.enums import Timeframe
+    from umae.domain.enums import AssetType, Timeframe
     from umae.domain.models import AssetMetadata, CandleSet
 
 
@@ -16,6 +16,15 @@ class DataAdapter(Protocol):
     @property
     def name(self) -> str:
         """Get adapter name."""
+        ...
+
+    @property
+    def supported_asset_types(self) -> frozenset[AssetType] | None:
+        """Asset types this adapter supports.
+
+        Returns a frozenset of supported AssetType values,
+        or None if the adapter supports all asset types.
+        """
         ...
 
     async def fetch_candles(

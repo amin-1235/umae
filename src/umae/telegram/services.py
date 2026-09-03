@@ -88,17 +88,23 @@ class AnalysisService:
         self,
         symbol: str,
         target_timeframe: Timeframe | None = None,
+        category: str | None = None,
     ) -> AnalysisResult:
         """Run analysis and return Telegram-formatted result.
 
         Args:
             symbol: Asset symbol to analyze.
             target_timeframe: If set, the single-TF target for analysis.
+            category: Asset category for provider routing (e.g., "crypto", "forex").
 
         Returns:
             AnalysisResult formatted for Telegram display.
         """
-        result = await self._core.analyze(symbol, target_timeframe=target_timeframe)
+        result = await self._core.analyze(
+            symbol,
+            target_timeframe=target_timeframe,
+            category=category,
+        )
         return self._convert_result(result)
 
     def _convert_result(self, core_result) -> AnalysisResult:

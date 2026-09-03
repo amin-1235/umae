@@ -278,7 +278,11 @@ async def _handle_timeframe(
 
     try:
         target_tf = payload.target_tf
-        result = await analysis_service.analyze(payload.asset, target_timeframe=target_tf)
+        result = await analysis_service.analyze(
+            payload.asset,
+            target_timeframe=target_tf,
+            category=payload.category,
+        )
         text = formatter.format_analysis_single_tf(result, payload.timeframe)
         keyboard = analysis_actions(payload.category, payload.asset, payload.timeframe)
         await query.edit_message_text(text, reply_markup=keyboard)
@@ -309,7 +313,10 @@ async def _handle_multi_tf(
     formatter: TelegramFormatter = context.bot_data["formatter"]
 
     try:
-        result = await analysis_service.analyze(payload.asset)
+        result = await analysis_service.analyze(
+            payload.asset,
+            category=payload.category,
+        )
         text = formatter.format_analysis(result)
         keyboard = analysis_actions(payload.category, payload.asset)
         # Split if too long

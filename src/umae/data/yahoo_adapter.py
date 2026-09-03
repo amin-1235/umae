@@ -66,6 +66,11 @@ class YahooFinanceAdapter:
         """Get adapter name."""
         return "yahoo"
 
+    @property
+    def supported_asset_types(self) -> frozenset[AssetType]:
+        """Yahoo Finance supports stocks, forex, indices, and ETFs."""
+        return frozenset({AssetType.STOCK, AssetType.FOREX, AssetType.INDEX, AssetType.ETF})
+
     async def close(self) -> None:
         """Close the adapter."""
         await self._http.close()
